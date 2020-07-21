@@ -4,6 +4,8 @@ import sys
 import os
 import json
 import csv
+import time
+from multiprocessing import Pool
 
 from templates.demo import TEST_TEMPLATES, LIST_OF_TEMPLATES
 from lxml import etree
@@ -123,6 +125,19 @@ def get_the_tag(inputfile):
                 selected_template = template
     return selected_template
 
+def convert_the_datafile(inputfile, output_dir, filetype):
+    # find the data according to the templates.
+    target_tag = get_the_tag(inputfile)
+
+    if target_tag is None:
+        raise Exception("The target tag for inputfile is None", inputfile)
+        
+    data_dict = get_data_dict(inputfile, target_tag)
+    # print("This is the data dict", data_dict)
+
+    # output the data with selected format
+    load_data_to_outputdir(data_dict, output_dir, inputfile, filetype=filetype)
+    return
 
 def main():
     input_option_str = 'i'
@@ -156,24 +171,18 @@ def main():
     list_of_datafiles = get_list_of_processing_files(input_dir)
     # print("##########", list_of_datafiles)
     
-    # find the data according to the templates.
 
     # create the warapper here
-
+    pool = Pool(processes=8)
     for inputfile in list_of_datafiles:
-        # get the target tag of the file
-        target_tag = get_the_tag(inputfile)
+        pool.apply_async(convert_the_datafile, (inputfile, output_dir, args.t))
+        # convert_the_datafile(inputfile, output_dir, args.t)
 
-        if target_tag is None:
-            raise Exception("The target tag for inputfile is None", inputfile)
-        
-        data_dict = get_data_dict(inputfile, target_tag)
-        # print("This is the data dict", data_dict)
-
-        # output the data with selected format
-        load_data_to_outputdir(data_dict, output_dir, inputfile, filetype=args.t)
-
+    pool.close()
+    pool.join()
     return
 
 if __name__ == '__main__':
+    start_time = time.time()
     main()
+    print("####################  process finished in ", time.time() - start_time)
